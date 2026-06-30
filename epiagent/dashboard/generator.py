@@ -61,6 +61,22 @@ LAYOUT_DEFAULTS = dict(
         font_size=12,
         bordercolor="#6366f1",
     ),
+    title_x=0.5,
+    title_y=0.98,
+    title_xanchor="center",
+    title_yanchor="top",
+    title_font_size=16,
+    legend=dict(
+        orientation="h",
+        yanchor="top",
+        y=-0.15,
+        xanchor="center",
+        x=0.5,
+        bgcolor="rgba(0,0,0,0)",
+        font_size=11,
+    ),
+    margin=dict(t=50, b=80, l=60, r=30),
+    height=450,
 )
 
 
@@ -145,7 +161,6 @@ def plot_epidemic_curve(
             showgrid=False,
         ),
         barmode="overlay",
-        legend=dict(orientation="h", yanchor="top", y=-0.2),
     )
 
     return fig
@@ -204,7 +219,6 @@ def plot_rt_timeseries(
         xaxis_title="Date",
         yaxis_title="Rt",
         yaxis=dict(range=[0, max(5, max(v_upper) * 1.2)]),
-        legend=dict(orientation="h", yanchor="top", y=-0.2),
     )
 
     return fig
@@ -239,7 +253,6 @@ def plot_seir_fit(
         title="🧬 SEIR Model Fit vs Observed Cases",
         xaxis_title="Date",
         yaxis_title="Daily Incidence",
-        legend=dict(orientation="h", yanchor="top", y=-0.2),
     )
 
     return fig
@@ -297,7 +310,6 @@ def plot_forecast(
         title=f"🔮 14-Day Forecast ({model_name})",
         xaxis_title="Date",
         yaxis_title="Predicted Cases",
-        legend=dict(orientation="h", yanchor="top", y=-0.2),
     )
 
     return fig
@@ -344,7 +356,6 @@ def plot_shap_importance(
         title="🎯 Forecast Driver Analysis (SHAP Feature Importance)",
         xaxis_title="Mean |SHAP Value|",
         yaxis_title="",
-        height=400,
     )
 
     return fig
