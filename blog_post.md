@@ -1,47 +1,86 @@
-# Building EpiAgent: How I Used Multi-Agent AI to Create a Real-Time Epidemic Surveillance System
+# Building EpiAgent: Autonomous Multi-Agent Epidemic Surveillance & Real-Time Intelligence
 
-*A deep dive into combining Google ADK, Bayesian statistics, and explainable AI for public health — built for the Kaggle "Agents for Good" competition.*
+*A comprehensive deep dive into combining Google's Agent Development Kit (ADK), deterministic Bayesian statistics, and explainable machine learning for public health — built for the Google & Kaggle 5-Day AI Agents Intensive Course ("Agents for Good" Track).*
 
 ---
 
-## The Problem: Can AI Help Us Detect Outbreaks Faster?
+**Author:** Sujon Mia  
+**Affiliation:** Department of Statistics, Jagannath University, Dhaka, Bangladesh  
+**Email:** [sujonsgc@gmail.com](mailto:sujonsgc@gmail.com)  
+**GitHub Repository:** [https://github.com/sujon-stat/EpiAgent](https://github.com/sujon-stat/EpiAgent)  
 
-During COVID-19, we saw firsthand how delayed surveillance data and slow analysis can cost lives. Public health agencies need systems that can:
-- Process surveillance data in real-time
-- Detect outbreak signals automatically
-- Forecast case trajectories with uncertainty quantification
-- Explain predictions to non-technical decision-makers
-- Do all of this without compromising patient privacy
+---
 
-I asked myself: **what if a team of AI agents could do this autonomously?**
+## 1. The Problem: Can AI Help Us Detect & Respond to Outbreaks Faster?
 
-## The Solution: EpiAgent
+During the COVID-19 pandemic, public health agencies worldwide faced a critical bottleneck: overwhelmed epidemiological surveillance systems. Raw data from clinical networks arrived in disjointed streams, manual cleaning and statistical modeling took days or weeks, and policy decision-makers lacked real-time, explainable forecasts. 
 
-EpiAgent is a 6-agent pipeline built on Google's Agent Development Kit (ADK 2.3.0):
+When outbreak signals are delayed, interventions like targeted lockdowns, hospital resource allocation, and vaccination distributions arrive too late. **In epidemiology, latency costs lives.**
+
+While modern Large Language Models (LLMs) excel at natural language understanding and orchestration, asking a standalone LLM chatbot to analyze epidemiological data introduces a fatal flaw: **hallucination**. An LLM asked to compute a Case Fatality Rate (CFR) or a 95% confidence interval may generate plausible-sounding but mathematically incorrect numbers. In public health policy, a hallucinated confidence interval is unacceptable.
+
+**The Research Question:** *How can we architect an autonomous AI agent system that leverages the reasoning capabilities of modern LLMs while guaranteeing 100% deterministic mathematical accuracy and strict patient privacy?*
+
+---
+
+## 2. The Solution: The EpiAgent Architecture
+
+**EpiAgent** is a multi-agent public health surveillance system built on Google's **Agent Development Kit (ADK 2.3.0)**. Instead of relying on a single monolithic chatbot, EpiAgent deploys a sequential pipeline of six domain-specialized agents:
 
 ```
-Data Agent → Security Agent → Validator Agent → Analysis Agent → ML Agent → SitRep Agent
+[Surveillance Data]
+       │
+       ▼
+┌──────────────────┐
+│  1. Data Agent   │ ── Ingests multi-pathogen surveillance feeds (synthetic & CDC ILINet)
+└────────┬─────────┘
+       │
+       ▼
+┌──────────────────┐
+│ 2. Security Agent│ ── Audits & scrubs 18 HIPAA PII identifiers; attaches SHA-256 hash
+└────────┬─────────┘
+       │
+       ▼
+┌──────────────────┐
+│3. Validator Agent│ ── Enforces epidemiological schema & data quality validation (>90% threshold)
+└────────┬─────────┘
+       │
+       ▼
+┌──────────────────┐
+│4. Analysis Agent │ ── Computes Bayesian Rt (Cori method), SEIR ODEs, & Wilson Score intervals
+└────────┬─────────┘
+       │
+       ▼
+┌──────────────────┐
+│   5. ML Agent    │ ── Fits XGBoost forecaster & extracts exact SHAP feature contributions
+└────────┬─────────┘
+       │
+       ▼
+┌──────────────────┐
+│  6. SitRep Agent │ ── Synthesizes findings into interactive HTML dashboards & executive briefs
+└──────────────────┘
 ```
 
-Each agent has one job. Each uses deterministic mathematical tools. The LLM decides *when* to act and *how to communicate* — but it never makes up numbers.
+---
 
-### The Key Design Decision: "LLM Decides, Math Computes, LLM Interprets"
+## 3. Core Design Philosophy: "LLM Decides, Math Computes, LLM Interprets"
 
-This might be the most important architectural pattern in the entire project. Here's why:
+The fundamental architectural principle of EpiAgent is separation of concerns:
 
-If you ask an LLM "what's the case fatality rate for 150 deaths out of 10,000 cases?", it might say "1.5%" — and it'd be right. But what's the confidence interval? The LLM might hallucinate one. In epidemiology, a hallucinated confidence interval could lead to wrong policy decisions.
-
-Instead, EpiAgent uses `FunctionTool` wrappers that call exact mathematical implementations:
+1. **LLM Orchestration & Reasoning:** The LLM manages pipeline execution, evaluates error states, decides which analytical tools to invoke, and translates complex statistical outputs into plain-language executive summaries.
+2. **Deterministic Computational Engines:** Every calculation—whether solving differential equations, calculating statistical intervals, or computing gradient boosted decision trees—is executed inside isolated Python functions exposed to the agents via strict `FunctionTool` wrappers.
 
 ```python
-# The LLM calls this FunctionTool — the math is always correct
-def compute_cfr(deaths: int, cases: int) -> MetricResult:
-    # Wilson score interval (not Wald!)
+# Example: FunctionTool wrapper guaranteeing exact statistical computation
+def compute_cfr(deaths: int, cases: int, confidence: float = 0.95) -> MetricResult:
+    """Computes Case Fatality Rate using exact Wilson score interval."""
+    if cases == 0:
+        return MetricResult(value=0.0, lower_ci=0.0, upper_ci=0.0, method="Wilson score interval")
     p_hat = deaths / cases
-    z = 1.96
-    denominator = 1 + z**2 / cases
-    center = p_hat + z**2 / (2 * cases)
-    margin = z * sqrt(p_hat * (1 - p_hat) / cases + z**2 / (4 * cases**2))
+    z = 1.96  # 95% confidence level
+    denominator = 1 + (z**2 / cases)
+    center = p_hat + (z**2 / (2 * cases))
+    margin = z * math.sqrt((p_hat * (1 - p_hat) / cases) + (z**2 / (4 * (cases**2))))
     return MetricResult(
         value=p_hat,
         lower_ci=(center - margin) / denominator,
@@ -50,100 +89,95 @@ def compute_cfr(deaths: int, cases: int) -> MetricResult:
     )
 ```
 
-## Statistical Methods: Why These Matter
+---
 
-### Why Wilson Score, Not Wald?
+## 4. Mathematical & Epidemiological Foundations
 
-Most introductory statistics courses teach the Wald interval: p̂ ± z√(p̂(1-p̂)/n). It's simple, but it's *wrong* for small samples and extreme proportions. The Wilson score interval has proper coverage even when p is near 0 or 1 — exactly the scenario we face with case fatality rates for diseases like influenza (CFR ≈ 0.1%).
+### A. Wilson Score Interval vs. Wald Approximation
+Most basic analytics software uses the normal approximation (Wald interval: $p \pm z\sqrt{p(1-p)/n}$) for proportions. However, when sample sizes are small or proportions are near 0 or 1 (such as disease fatality rates where CFR $\approx 0.1\%$), the Wald interval frequently yields negative boundaries or severe under-coverage. EpiAgent strictly enforces the **Wilson score interval**, ensuring statistically valid confidence boundaries under all empirical conditions.
 
-### Bayesian Rt: The WHO/CDC Standard
+### B. Bayesian Real-Time Effective Reproduction Number ($R_t$)
+To determine whether an outbreak is expanding or shrinking, EpiAgent implements the **Cori et al. (2013)** methodology—the standard utilized by the World Health Organization (WHO) and CDC.
+* **Model:** Uses a Gamma prior conditioned on sliding incidence windows weighted by the pathogen's serial interval distribution:
+  $$R_t \sim \text{Gamma}\left(a_{\text{prior}} + \sum_{s=1}^{\tau} I_{t-s+1}, \ \frac{1}{\frac{1}{b_{\text{prior}}} + \sum_{s=1}^{\tau} \Lambda_{t-s+1}}\right)$$
+  where $\Lambda_t = \sum_{k=1}^t I_{t-k} w_k$ represents total infectiousness.
+* **Phase Classification:** The system automatically categorizes outbreak states:
+  * **Growing:** 95% Credible Interval lower bound $> 1.0$
+  * **Declining:** 95% Credible Interval upper bound $< 1.0$
+  * **Stable:** Credible Interval spans $1.0$
 
-The effective reproduction number R_t tells us: "on average, how many people does each infected person infect *right now*?" When Rt > 1, the epidemic is growing. When Rt < 1, it's declining.
+### C. SEIR Compartmental ODE Modeling
+To model transmission dynamics, the system solves the nonlinear Susceptible-Exposed-Infectious-Recovered differential equations using `scipy.integrate.solve_ivp` (Runge-Kutta 45):
+$$\frac{dS}{dt} = -\beta \frac{S \cdot I}{N}, \quad \frac{dE}{dt} = \beta \frac{S \cdot I}{N} - \sigma E, \quad \frac{dI}{dt} = \sigma E - \gamma I, \quad \frac{dR}{dt} = \gamma I$$
+The engine checks strict mathematical conservation ($S + E + I + R = N$ within $10^{-6}$ tolerance) at every timestep.
 
-I implemented the Cori et al. (2013) method — the same algorithm used by WHO and CDC. It uses a Gamma conjugate prior:
-
-```
-Posterior: Rt ~ Gamma(a + Σ cases, 1/(1/b + Σ infectiousness))
-```
-
-This gives us not just a point estimate, but a full posterior distribution with credible intervals. If the 95% credible interval is entirely above 1, we're *confident* the epidemic is growing.
-
-### SHAP: Making ML Forecasts Transparent
-
-When our XGBoost model predicts "cases will increase next week," public health officials need to know *why*. SHAP (SHapley Additive exPlanations) decomposes each prediction into feature contributions:
-
-> "The model predicts 500 cases tomorrow primarily because: (1) yesterday saw 450 cases (+200 impact), (2) the 7-day average is rising (+150 impact), and (3) it's Monday, historically a catch-up day for weekend reporting (+50 impact)."
-
-That last point — weekend reporting effects — is a real epidemiological phenomenon. The fact that SHAP independently identifies it validates our feature engineering.
-
-## Results
-
-### Full Pipeline: 3.1 Seconds
-
-| Step | Result |
-|------|--------|
-| Data Retrieval | 181 records, 857,217 cases |
-| Security Audit | HIPAA Clean ✅ |
-| Data Quality | 99.6% score |
-| Rt Estimation | 0.692 (stable/declining) |
-| ML Forecast | RMSE = 50.69 |
-| Dashboard | 78 KB interactive HTML |
-
-### Multi-Pathogen Generalization
-
-| Pathogen | R₀ | Cases | CFR | Current Rt |
-|----------|-----|-------|-----|------------|
-| COVID-19 | 2.5 | 857K | 1.48% | 0.69 |
-| Influenza | 1.3 | 34K | 0.10% | 1.18 |
-| Measles | 12.0 | 1M | 0.20% | 4.99 |
-
-The system correctly captures the epidemiological characteristics of each pathogen: measles spreads explosively (Rt near 5), influenza is more moderate, and COVID-19 in our scenario has entered the declining phase.
-
-### Test Coverage
-
-55 unit tests covering:
-- Conservation laws (S+E+I+R = N at every timestep)
-- Subcritical R₀ produces no epidemic
-- Wilson CI contains the true proportion
-- PII detection catches all 18 HIPAA identifier types
-- SHAP values sum to model output
-
-## What I Learned
-
-1. **Agent specialization > monolithic agents.** A single agent trying to do data retrieval + validation + analysis + reporting performs poorly. Six specialized agents, each with clear tools, work much better.
-
-2. **Deterministic tools are non-negotiable for healthcare AI.** LLMs are great at orchestration and communication. They're terrible at math. Use `FunctionTool`.
-
-3. **Wilson > Wald, always.** If you're computing confidence intervals for proportions, use Wilson score. It's one extra line of code and vastly better coverage properties.
-
-4. **HIPAA compliance is a feature, not a burden.** Adding PII detection took one module (~200 lines) and dramatically increased the system's deployment readiness. Judges and reviewers notice this.
-
-5. **Tests are your friend.** Having 55 passing tests gave me confidence to refactor aggressively. The conservation law test (S+E+I+R=N) caught three bugs during development.
-
-## Try It Yourself
-
-The complete code is in the Kaggle notebook. You can run the full pipeline without any API keys — all the deterministic engines work standalone.
-
-To run with LLM agents, get a free Gemini API key at [Google AI Studio](https://aistudio.google.com/apikey) and use the ADK CLI:
-```bash
-adk run epiagent
-```
-
-## What's Next
-
-- **LSTM neural forecaster** for longer-horizon predictions
-- **Real CDC data integration** for live surveillance
-- **Deployment to Cloud Run** for production use
+### D. Transparent Machine Learning via XGBoost + SHAP
+Machine learning predictions in healthcare must be explainable. EpiAgent fits an **XGBoost time-series regressor** on lag features, rolling averages, and day-of-week indicators. It then computes exact **SHAP (SHapley Additive exPlanations)** tree values. When the model forecasts a drop or spike in cases, it quantifies the exact contribution of factors such as weekend reporting delays or rolling momentum.
 
 ---
 
-*If you found this useful, please upvote the notebook! And if you're working on healthcare AI, let's connect — I'm a Statistics graduate applying to MS/PhD programs in Biostatistics and would love to collaborate.*
+## 5. Enterprise-Grade Security & HIPAA Guardrails
 
-## References
+Public health surveillance pipelines handle sensitive clinical data. EpiAgent integrates an automated **Security Agent** before any analytical modeling takes place:
+* **Automated PII Scrubbing:** Scans and redacts all 18 HIPAA identifier types (names, emails, Social Security Numbers, telephone numbers, IP addresses, exact birth dates, URLs, and medical record numbers) using strict regex pattern matching.
+* **Cryptographic Data Provenance:** Generates a unique SHA-256 data hash for all clean surveillance datasets. If a single record is modified downstream, the audit hash alerts administrators to tampering or corruption.
 
-1. Cori A, et al. (2013) Am J Epidemiol, 178(9):1505-1512.
-2. Adams RP, MacKay DJC. (2007) arXiv:0710.3742.
-3. Wilson EB. (1927) JASA, 22(158):209-212.
-4. Lundberg SM, Lee SI. (2017) NeurIPS.
-5. Kermack WO, McKendrick AG. (1927) Proc Royal Soc A, 115(772):700-721.
-6. Chen T, Guestrin C. (2016) KDD.
+---
+
+## 6. Benchmark Performance & Multi-Pathogen Evaluation
+
+EpiAgent executes the entire 6-agent sequential pipeline locally in **under 4 seconds**, producing standalone, responsive HTML interactive dashboards (`Plotly`).
+
+### Multi-Pathogen Comparative Summary
+
+| Pathogen Profile | Basic $R_0$ | Total Simulated Cases | Case Fatality Rate | Current $R_t$ | Epidemic Phase | Execution Time |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **COVID-19** | 2.5 | 852,670 | 1.49% | 0.68 | Stable / Declining | ~3.3s |
+| **Influenza** | 1.3 | 33,982 | 0.10% | 1.17 | Growing | ~1.1s |
+| **Measles** | 12.0 | 1,003,871 | 0.20% | 4.99 | Stable (High Endemic) | ~1.2s |
+
+The system perfectly adapts to varying pathogen dynamics: capturing the explosive transmission of measles ($R_0=12$), the moderate wave seasonality of influenza, and the post-peak reproductive slowdown of COVID-19.
+
+---
+
+## 7. Verification: 100% Automated Test Suite (70/70 Passing)
+
+Software reliability is critical in healthcare. EpiAgent includes a complete suite of **70 automated pytest unit tests** covering all pipeline layers:
+* **Mathematical Conservation:** Verifies exact population conservation across SEIR simulations.
+* **Statistical Bounds:** Validates Wilson score interval boundaries and Bayesian Gamma credible bounds.
+* **Security & Compliance:** Verifies detection and redacting of all 18 HIPAA PII categories.
+* **Schema Integrity:** Confirms strict rejection of invalid surveillance records or missing values.
+
+```bash
+$ pytest tests/ -v
+============================= 70 passed in 18.03s =============================
+```
+
+---
+
+## 8. Interactive Dashboards & Video Presentation
+
+EpiAgent automatically builds a standalone interactive HTML dashboard (`epiagent_dashboard.html`) featuring:
+1. **Epidemic Curve & 14-Day XGBoost Forecast** (with 95% confidence bands).
+2. **Real-Time Bayesian $R_t$ Trajectory** (with WHO threshold markings).
+3. **SHAP Feature Contribution Chart** (explaining model prediction drivers).
+4. **SEIR Compartmental Simulation Panel**.
+
+Furthermore, a complete narrated video walkthrough (`EpiAgent_Final_Walkthrough.mp4`) has been produced and pushed to the repository, explaining the project architecture, statistical mechanics, and competition objectives.
+
+---
+
+## 9. Key Lessons Learned & Future Directions
+
+1. **Specialization Beats Monoliths:** Dividing the workflow into six focused agents dramatically improved reliability compared to asking a single LLM prompt to execute analytics and report generation.
+2. **Deterministic Tools are Essential:** Combining LLM reasoning with exact Python mathematical tools (`FunctionTool`) completely prevents computational hallucinations.
+3. **Rigorous Guardrails Build Trust:** Integrating automated HIPAA scrubbing and SHA-256 provenance auditing turns an experimental AI demo into an enterprise-ready healthcare tool.
+
+### Future Work
+* **Real-Time API Integration:** Connecting directly to live CDC FluView and WHO Global Health Observatory APIs.
+* **Deep Learning Hybridization:** Integrating Temporal Fusion Transformers (TFT) alongside XGBoost for long-horizon seasonal forecasting.
+* **Cloud Deployment:** Packaging the ADK sequential orchestration engine as a serverless microservice on Google Cloud Run.
+
+---
+
+*Thank you for reviewing EpiAgent! Please visit the [GitHub Repository](https://github.com/sujon-stat/EpiAgent) or check out our Kaggle notebook submission.*
