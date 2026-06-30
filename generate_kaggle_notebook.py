@@ -40,6 +40,10 @@ def build_notebook() -> dict:
 
 **Google/Kaggle 5-Day AI Agents Intensive Course — "Agents for Good" (Healthcare)**
 
+🎬 **[Watch the Complete 7-Minute Video Presentation on YouTube](https://youtu.be/yB7ILJe-SAc)**  
+📦 **[GitHub Repository (All 70 Unit Tests & Code)](https://github.com/sujon-stat/EpiAgent)**  
+✍️ **Author:** Sujon Mia (Department of Statistics, Jagannath University, Bangladesh)
+
 ---
 
 ## Executive Summary

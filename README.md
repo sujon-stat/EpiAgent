@@ -2,13 +2,16 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://python.org)
 [![Google ADK 2.3](https://img.shields.io/badge/Google%20ADK-2.3.0-4285F4.svg)](https://google.github.io/adk-docs/)
-[![Tests](https://img.shields.io/badge/tests-55%2F55%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-70%2F70%20passing-brightgreen.svg)]()
 [![HIPAA](https://img.shields.io/badge/HIPAA-Safe%20Harbor%20Compliant-green.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **An autonomous public health intelligence pipeline that streams surveillance data, applies strict security guardrails, runs deterministic compartmental models to detect outbreak signals, and generates executive situation reports.**
 
 Built for the **Google/Kaggle 5-Day AI Agents Intensive Course** — Track: *"Agents for Good" (Healthcare)*.
+
+🎬 **[Watch the Complete 7-Minute Video Presentation on YouTube](https://youtu.be/yB7ILJe-SAc)**  
+📖 **[Read the Competition Write-Up / Blog Post](blog_post.md)**
 
 ---
 

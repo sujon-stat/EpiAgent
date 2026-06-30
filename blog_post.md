@@ -8,6 +8,7 @@
 **Affiliation:** Department of Statistics, Jagannath University, Dhaka, Bangladesh  
 **Email:** [sujonsgc@gmail.com](mailto:sujonsgc@gmail.com)  
 **GitHub Repository:** [https://github.com/sujon-stat/EpiAgent](https://github.com/sujon-stat/EpiAgent)  
+**YouTube Video Presentation:** [https://youtu.be/yB7ILJe-SAc](https://youtu.be/yB7ILJe-SAc)  
 
 ---
 
